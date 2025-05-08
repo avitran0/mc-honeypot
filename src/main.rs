@@ -6,7 +6,10 @@ use std::{
 };
 
 use log::{error, info, warn};
-use protocol::{mc_version, read, read_header, read_string, read_varint, send_login, send_status};
+use protocol::{
+    mc_version, read, read_header, read_string, read_varint, send_legacy_ping, send_login,
+    send_status,
+};
 
 mod protocol;
 
@@ -43,20 +46,28 @@ fn main() {
         let thread_file = out_file.clone();
 
         thread::spawn(move || {
+            let mut first_byte = [0u8; 1];
+            stream.peek(&mut first_byte).unwrap();
+            if first_byte[0] == 0xFE {
+                info!("legacy ping");
+                send_legacy_ping(&mut stream);
+                return;
+            }
             let header = read_header(&mut stream);
             if header.id != 0x00 {
                 warn!("handshake packet id mismatch: 0x{:x}", header.id);
                 return;
             }
             let version = read_varint(&mut stream);
-            info!("minecraft version: {}", mc_version(version));
             let hostname = read_string(&mut stream);
-            info!("hostname: {hostname}");
             let port: u16 = read(&mut stream);
+            info!("protocol version: {version}");
+            info!("minecraft version: {}", mc_version(version));
+            info!("hostname: {hostname}");
             info!("port: {port}");
-            let state: u8 = read(&mut stream);
+            let state = read_varint(&mut stream);
             let info = match state {
-                1 => {
+                1 | 110 => {
                     info!("type: ping");
                     send_status(&mut stream, version)
                 }
@@ -64,7 +75,10 @@ fn main() {
                     info!("type: login");
                     send_login(&mut stream)
                 }
-                _ => None,
+                _ => {
+                    warn!("unknown handshake state: {state}");
+                    None
+                }
             };
             if let Some(mut info) = info {
                 info.ip = ip.to_string();
