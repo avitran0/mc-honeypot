@@ -33,7 +33,6 @@ fn main() {
             Ok(ip) => ip,
             Err(_) => continue,
         };
-        info!("accepted connection from {ip}");
 
         thread::spawn(move || {
             let mut first_byte = [0u8; 1];
@@ -48,11 +47,6 @@ fn main() {
             // normal ping or handshake
             let handshake = Handshake::new(&mut stream);
 
-            info!("protocol version: {}", handshake.version);
-            info!("minecraft version: {}", &handshake.mc_version);
-            info!("hostname: {}", &handshake.hostname);
-            info!("port: {}", handshake.port);
-
             // modern ping
             if handshake.state == 1 {
                 let _status_request = StatusRequest::new(&mut stream);
@@ -65,6 +59,12 @@ fn main() {
             if handshake.state != 2 {
                 return;
             }
+
+            info!("ip: {ip}");
+            info!("protocol version: {}", handshake.version);
+            info!("minecraft version: {}", &handshake.mc_version);
+            info!("hostname: {}", &handshake.hostname);
+            info!("port: {}", handshake.port);
 
             let login = LoginStart::new(&mut stream);
             LoginSuccess::send(&mut stream, &login);
