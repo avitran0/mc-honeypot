@@ -74,6 +74,8 @@ fn main() {
             info!("hostname: {}", &handshake.hostname);
 
             let login = LoginStart::new(&mut stream);
+            info!("player name: {}", &login.player_name);
+            info!("player uuid: {}", login.uuid);
         });
     }
 }

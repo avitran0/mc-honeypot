@@ -14,7 +14,7 @@ pub struct Handshake {
     pub version: i32,
     pub mc_version: String,
     pub hostname: String,
-    pub port: u16,
+    pub _port: u16,
     pub state: i32,
 }
 
@@ -23,14 +23,14 @@ impl Handshake {
         let _header = read_header(r);
         let version = read_varint(r);
         let hostname = read_string(r);
-        let port = read(r);
+        let _port = read(r);
         let state = read_varint(r);
         Self {
             _header,
             version,
             mc_version: mc_version(version).to_string(),
             hostname,
-            port,
+            _port,
             state,
         }
     }
@@ -121,7 +121,7 @@ pub struct LegacyPing {
     pub hostname: String,
     pub version: u8,
     pub mc_version: String,
-    pub port: i32,
+    pub _port: i32,
 }
 
 impl LegacyPing {
@@ -134,12 +134,12 @@ impl LegacyPing {
         let _remaining_length: i16 = read(r);
         let version = read(r);
         let hostname = read_legacy_string(r);
-        let port = read(r);
+        let _port = read(r);
         Self {
             hostname,
             version,
             mc_version: mc_version_legacy(version).to_string(),
-            port,
+            _port,
         }
     }
 }
