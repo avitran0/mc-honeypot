@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use bytemuck::{AnyBitPattern, NoUninit};
+use bytemuck::AnyBitPattern;
 use log::warn;
 
 pub fn read_varint<R: Read>(r: &mut R) -> i32 {
@@ -75,14 +75,4 @@ pub fn read<R: Read, T: AnyBitPattern + Default>(r: &mut R) -> T {
     bytemuck::try_from_bytes(&buffer)
         .copied()
         .unwrap_or_default()
-}
-
-pub fn write<W: Write, T: NoUninit>(w: &mut W, value: &T) {
-    let mut buffer = bytemuck::bytes_of(value).to_vec();
-
-    // network bytes are in big endian
-    #[cfg(target_endian = "little")]
-    buffer.reverse();
-
-    w.write_all(&buffer).unwrap();
 }

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     protocol::{PacketHeader, mc_version, mc_version_legacy, read_header},
-    util::{read, read_legacy_string, read_string, read_varint, write, write_string, write_varint},
+    util::{read, read_legacy_string, read_string, read_varint, write_string, write_varint},
 };
 
 /// first packet sent by modern clients
@@ -113,21 +113,6 @@ impl LoginStart {
             player_name,
             uuid,
         }
-    }
-}
-
-pub struct LoginSuccess;
-
-impl LoginSuccess {
-    pub fn send<W: Write>(w: &mut W, login: &LoginStart) {
-        let mut payload = Vec::new();
-
-        write(&mut payload, &login.uuid.as_u128());
-        write_string(&mut payload, &login.player_name);
-
-        write_varint(w, payload.len() as i32 + 1);
-        write_varint(w, 0x02);
-        w.write_all(&payload).unwrap();
     }
 }
 

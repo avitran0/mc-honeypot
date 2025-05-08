@@ -2,7 +2,7 @@ use std::{io::Write, net::TcpListener, thread};
 
 use log::{error, info};
 use packets::{
-    Handshake, LegacyPing, LegacyPingResponse, LoginStart, LoginSuccess, Ping, Pong, StatusRequest,
+    Handshake, LegacyPing, LegacyPingResponse, LoginStart, Ping, Pong, StatusRequest,
     StatusResponse,
 };
 
@@ -21,7 +21,6 @@ fn main() {
     info!("listening on port {PORT}");
 
     for stream in listener.incoming() {
-        println!();
         let mut stream = match stream {
             Ok(stream) => stream,
             Err(err) => {
@@ -35,12 +34,17 @@ fn main() {
         };
 
         thread::spawn(move || {
+            println!();
             let mut first_byte = [0u8; 1];
             stream.peek(&mut first_byte).unwrap();
             // legacy ping
             if first_byte[0] == 0xFE {
-                let _ping = LegacyPing::new(&mut stream);
+                let ping = LegacyPing::new(&mut stream);
                 LegacyPingResponse::send(&mut stream);
+                info!("legacy ping from {ip}");
+                info!("protocol version: {}", ping.version);
+                info!("minecraft version: {}", ping.mc_version);
+                info!("hostname: {}", ping.hostname);
                 return;
             }
 
@@ -53,6 +57,10 @@ fn main() {
                 StatusResponse::send(&mut stream, handshake.version);
                 let ping = Ping::new(&mut stream);
                 Pong::send(&mut stream, ping.payload);
+                info!("ping from: {ip}");
+                info!("protocol version: {}", handshake.version);
+                info!("minecraft version: {}", &handshake.mc_version);
+                info!("hostname: {}", &handshake.hostname);
                 return;
             }
 
@@ -60,14 +68,12 @@ fn main() {
                 return;
             }
 
-            info!("ip: {ip}");
+            info!("login from: {ip}");
             info!("protocol version: {}", handshake.version);
             info!("minecraft version: {}", &handshake.mc_version);
             info!("hostname: {}", &handshake.hostname);
-            info!("port: {}", handshake.port);
 
             let login = LoginStart::new(&mut stream);
-            LoginSuccess::send(&mut stream, &login);
         });
     }
 }
