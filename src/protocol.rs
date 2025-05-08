@@ -1,8 +1,9 @@
 use std::io::{Read, Write};
 
-use bytemuck::{AnyBitPattern, NoUninit};
+use bytemuck::AnyBitPattern;
 use log::{info, warn};
 use serde::Serialize;
+use uuid::Uuid;
 
 pub struct PacketHeader {
     pub _length: i32,
@@ -83,14 +84,13 @@ pub fn read<R: Read, T: AnyBitPattern + Default>(r: &mut R) -> T {
     if r.read_exact(&mut buffer).is_err() {
         return T::default();
     };
+    // network bytes are in big endian
+    #[cfg(target_endian = "little")]
+    buffer.reverse();
+
     bytemuck::try_from_bytes(&buffer)
         .copied()
         .unwrap_or_default()
-}
-
-fn write<W: Write, T: NoUninit + Default>(w: &mut W, value: &T) {
-    let buffer = bytemuck::bytes_of(value);
-    let _ = w.write_all(buffer);
 }
 
 pub fn read_header<R: Read>(r: &mut R) -> PacketHeader {
@@ -98,6 +98,17 @@ pub fn read_header<R: Read>(r: &mut R) -> PacketHeader {
         _length: read_varint(r),
         id: read_varint(r),
     }
+}
+
+#[derive(Debug, Serialize, Default)]
+pub struct LoginInfo {
+    pub ip: String,
+    pub protocol: i32,
+    pub mc_version: String,
+    pub hostname: String,
+    pub port: u16,
+    pub player_name: String,
+    pub uuid: String,
 }
 
 #[derive(Serialize)]
@@ -142,13 +153,12 @@ struct StatusDescription {
     pub text: String,
 }
 
-pub fn send_status<S: Read + Write>(s: &mut S, protocol: i32) {
+pub fn send_status<S: Read + Write>(s: &mut S, protocol: i32) -> Option<LoginInfo> {
     let header = read_header(s);
     if header.id != 0x00 {
         warn!("status packet id mismatch: 0x{:x}", header.id);
-        return;
+        return None;
     }
-    stringify!();
     let server_description = Status::new(protocol, "desc".to_string());
     let mut payload = Vec::new();
     write_varint(&mut payload, 0x00);
@@ -165,7 +175,7 @@ pub fn send_status<S: Read + Write>(s: &mut S, protocol: i32) {
     let header = read_header(s);
     if header.id != 0x01 {
         warn!("ping packet id mismatch: 0x{:x}", header.id);
-        return;
+        return None;
     }
     let mut ping_payload = [0u8; 8];
     s.read_exact(&mut ping_payload).unwrap();
@@ -177,30 +187,29 @@ pub fn send_status<S: Read + Write>(s: &mut S, protocol: i32) {
 
     write_varint(s, pong.len() as i32);
     s.write_all(&pong).unwrap();
+    None
 }
 
-pub fn send_login<S: Read + Write>(s: &mut S) {
+pub fn send_login<S: Read + Write>(s: &mut S) -> Option<LoginInfo> {
     let login_start_header = read_header(s);
     if login_start_header.id != 0 {
         warn!(
             "login start packet id mismatch: 0x{:x}",
             login_start_header.id
         );
-        return;
+        return None;
     }
 
     let player_name = read_string(s);
     info!("player name: {player_name}");
-    let uuid: u128 = read(s);
-    info!("player uuid: {uuid:x}");
+    let uuid = Uuid::from_u128_le(read(s));
+    info!("player uuid: {uuid}");
 
-    // respond with login success
-    let mut payload = Vec::with_capacity(16);
-    write(&mut payload, &uuid);
-    write_string(&mut payload, &player_name);
-
-    write_varint(s, payload.len() as i32);
-    s.write_all(&payload).unwrap();
+    Some(LoginInfo {
+        player_name,
+        uuid: uuid.to_string(),
+        ..Default::default()
+    })
 }
 
 pub const fn mc_version(protocol_version: i32) -> &'static str {
@@ -212,6 +221,7 @@ pub const fn mc_version(protocol_version: i32) -> &'static str {
         766 => "1.20.6",
         765 => "1.20.4",
         764 => "1.20.2",
+        763 => "1.20.1",
         _ => "unknown",
     }
 }
