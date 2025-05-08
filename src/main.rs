@@ -1,17 +1,14 @@
-use std::{
-    io::Write,
-    net::TcpListener,
-    sync::{Arc, Mutex},
-    thread,
+use std::{io::Write, net::TcpListener, thread};
+
+use log::{error, info};
+use packets::{
+    Handshake, LegacyPing, LegacyPingResponse, LoginStart, LoginSuccess, Ping, Pong, StatusRequest,
+    StatusResponse,
 };
 
-use log::{error, info, warn};
-use protocol::{
-    mc_version, read, read_header, read_string, read_varint, send_legacy_ping, send_login,
-    send_status,
-};
-
+mod packets;
 mod protocol;
+mod util;
 
 fn main() {
     env_logger::builder()
@@ -23,10 +20,8 @@ fn main() {
     let listener = TcpListener::bind(("0.0.0.0", PORT)).expect("port 25565 is already in use");
     info!("listening on port {PORT}");
 
-    let csv_writer = csv::Writer::from_path("out.csv").unwrap();
-    let out_file = Arc::new(Mutex::new(csv_writer));
-
     for stream in listener.incoming() {
+        println!();
         let mut stream = match stream {
             Ok(stream) => stream,
             Err(err) => {
@@ -36,64 +31,43 @@ fn main() {
         };
         let ip = match stream.peer_addr() {
             Ok(ip) => ip,
-            Err(_) => {
-                error!("could not get connected ip address");
-                continue;
-            }
+            Err(_) => continue,
         };
         info!("accepted connection from {ip}");
-
-        let thread_file = out_file.clone();
 
         thread::spawn(move || {
             let mut first_byte = [0u8; 1];
             stream.peek(&mut first_byte).unwrap();
+            // legacy ping
             if first_byte[0] == 0xFE {
-                info!("legacy ping");
-                send_legacy_ping(&mut stream);
+                let _ping = LegacyPing::new(&mut stream);
+                LegacyPingResponse::send(&mut stream);
                 return;
             }
-            let header = read_header(&mut stream);
-            if header.id != 0x00 {
-                warn!("handshake packet id mismatch: 0x{:x}", header.id);
+
+            // normal ping or handshake
+            let handshake = Handshake::new(&mut stream);
+
+            info!("protocol version: {}", handshake.version);
+            info!("minecraft version: {}", &handshake.mc_version);
+            info!("hostname: {}", &handshake.hostname);
+            info!("port: {}", handshake.port);
+
+            // modern ping
+            if handshake.state == 1 {
+                let _status_request = StatusRequest::new(&mut stream);
+                StatusResponse::send(&mut stream, handshake.version);
+                let ping = Ping::new(&mut stream);
+                Pong::send(&mut stream, ping.payload);
                 return;
             }
-            let version = read_varint(&mut stream);
-            let hostname = read_string(&mut stream);
-            let port: u16 = read(&mut stream);
-            info!("protocol version: {version}");
-            info!("minecraft version: {}", mc_version(version));
-            info!("hostname: {hostname}");
-            info!("port: {port}");
-            let state = read_varint(&mut stream);
-            let info = match state {
-                1 | 110 => {
-                    info!("type: ping");
-                    send_status(&mut stream, version)
-                }
-                2 => {
-                    info!("type: login");
-                    send_login(&mut stream)
-                }
-                _ => {
-                    warn!("unknown handshake state: {state}");
-                    None
-                }
-            };
-            if let Some(mut info) = info {
-                info.ip = ip.to_string();
-                info.protocol = version;
-                info.mc_version = mc_version(version).to_string();
-                info.hostname = hostname;
-                info.port = port;
 
-                // save info
-                let mut writer = thread_file.lock().unwrap();
-                writer.serialize(info).unwrap();
-                writer.flush().unwrap();
+            if handshake.state != 2 {
+                return;
             }
 
-            info!("connection closed\n");
+            let login = LoginStart::new(&mut stream);
+            LoginSuccess::send(&mut stream, &login);
         });
     }
 }
