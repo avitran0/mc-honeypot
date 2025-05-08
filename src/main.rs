@@ -28,7 +28,7 @@ fn main() {
         thread::spawn(move || {
             let header = read_header(&mut stream);
             if header.id != 0x00 {
-                warn!("packet id mismatch");
+                warn!("handshake packet id mismatch: 0x{:x}", header.id);
                 return;
             }
             let version = read_varint(&mut stream);
@@ -39,7 +39,7 @@ fn main() {
             info!("port: {port}");
             let state: u8 = read(&mut stream);
             match state {
-                1 => send_status(&mut stream),
+                1 => send_status(&mut stream, version),
                 2 => send_login(&mut stream),
                 _ => {}
             }

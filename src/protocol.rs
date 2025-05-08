@@ -2,6 +2,7 @@ use std::io::{Read, Write};
 
 use bytemuck::AnyBitPattern;
 use log::warn;
+use serde::Serialize;
 
 pub struct PacketHeader {
     pub length: i32,
@@ -48,18 +49,19 @@ fn write_varint<W: Write>(w: &mut W, value: i32) {
 }
 
 pub fn read_string<R: Read>(r: &mut R) -> String {
+    let length = read_varint(r);
     let mut num_read = 0;
     let mut result = String::with_capacity(16);
-    loop {
+    for _ in 0..length {
         let mut byte = [0u8];
         if r.read_exact(&mut byte).is_err() {
             break;
         }
-        let val = byte[0];
-        if val == 0 {
+        let val = byte[0] as char;
+        if !val.is_alphanumeric() {
             break;
         }
-        result.push(val as char);
+        result.push(val);
         num_read += 1;
         if num_read > 255 {
             eprintln!("string was too long");
@@ -93,21 +95,62 @@ pub fn read_header<R: Read>(r: &mut R) -> PacketHeader {
     }
 }
 
-pub fn send_status<S: Read + Write>(s: &mut S) {
+#[derive(Serialize)]
+struct Status {
+    pub version: StatusVersion,
+    pub players: StatusPlayers,
+    pub description: StatusDescription,
+}
+
+impl Status {
+    pub fn new(protocol: i32, description: String) -> Self {
+        Self {
+            version: StatusVersion {
+                name: mc_version(protocol).to_string(),
+                protocol,
+            },
+            players: StatusPlayers {
+                max: 100,
+                online: 0,
+                sample: Vec::new(),
+            },
+            description: StatusDescription { text: description },
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct StatusVersion {
+    pub name: String,
+    pub protocol: i32,
+}
+
+#[derive(Serialize)]
+struct StatusPlayers {
+    pub max: i32,
+    pub online: i32,
+    pub sample: Vec<()>,
+}
+
+#[derive(Serialize)]
+struct StatusDescription {
+    pub text: String,
+}
+
+pub fn send_status<S: Read + Write>(s: &mut S, protocol: i32) {
     let header = read_header(s);
     if header.id != 0x00 {
-        warn!("packet id mismatch");
+        warn!("status packet id mismatch: 0x{:x}", header.id);
         return;
     }
-
-    let server_description = r#"{
-        "version": { "name": "Rust-Server", "protocol": 754 },
-        "players": { "max": 100, "online": 0, "sample": [] },
-        "description": { "text": "Hello from Rust!" }
-    }"#;
+    stringify!();
+    let server_description = Status::new(protocol, "desc".to_string());
     let mut payload = Vec::new();
     write_varint(&mut payload, 0x00);
-    write_string(&mut payload, server_description);
+    write_string(
+        &mut payload,
+        &serde_json::to_string(&server_description).unwrap(),
+    );
 
     // write length and send
     write_varint(s, payload.len() as i32);
@@ -115,6 +158,10 @@ pub fn send_status<S: Read + Write>(s: &mut S) {
 
     // ping packet
     let header = read_header(s);
+    if header.id != 0x01 {
+        warn!("ping packet id mismatch: 0x{:x}", header.id);
+        return;
+    }
     let mut ping_payload = [0u8; 8];
     s.read_exact(&mut ping_payload).unwrap();
 
