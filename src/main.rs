@@ -1,4 +1,4 @@
-use std::{io::Write, net::TcpListener, thread, time::Instant};
+use std::{io::Write, net::TcpListener, thread};
 
 use log::{error, info, warn};
 use protocol::{mc_version, read, read_header, read_string, read_varint, send_login, send_status};
@@ -12,7 +12,7 @@ fn main() {
         .init();
 
     const PORT: u16 = 25565;
-    let listener = TcpListener::bind(("0.0.0.0", PORT)).unwrap();
+    let listener = TcpListener::bind(("0.0.0.0", PORT)).expect("port 25565 is already in use");
     info!("listening on port {PORT}");
 
     for stream in listener.incoming() {
@@ -23,7 +23,14 @@ fn main() {
                 continue;
             }
         };
-        info!("accepted connection from {}", stream.peer_addr().unwrap());
+        let ip = match stream.peer_addr() {
+            Ok(ip) => ip,
+            Err(_) => {
+                error!("could not get connected ip address");
+                continue;
+            }
+        };
+        info!("accepted connection from {ip}");
 
         thread::spawn(move || {
             let header = read_header(&mut stream);
@@ -44,7 +51,7 @@ fn main() {
                 _ => {}
             }
 
-            info!("connection closed");
+            info!("connection closed\n");
         });
     }
 }

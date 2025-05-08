@@ -5,7 +5,7 @@ use log::warn;
 use serde::Serialize;
 
 pub struct PacketHeader {
-    pub length: i32,
+    pub _length: i32,
     pub id: i32,
 }
 
@@ -90,7 +90,7 @@ pub fn read<R: Read, T: AnyBitPattern + Default>(r: &mut R) -> T {
 
 pub fn read_header<R: Read>(r: &mut R) -> PacketHeader {
     PacketHeader {
-        length: read_varint(r),
+        _length: read_varint(r),
         id: read_varint(r),
     }
 }
@@ -174,7 +174,9 @@ pub fn send_status<S: Read + Write>(s: &mut S, protocol: i32) {
     s.write_all(&pong).unwrap();
 }
 
-pub fn send_login<R: Read>(r: &mut R) {}
+pub fn send_login<R: Read>(_r: &mut R) {
+    todo!()
+}
 
 pub const fn mc_version(protocol_version: i32) -> &'static str {
     match protocol_version {
