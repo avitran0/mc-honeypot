@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
-use bytemuck::AnyBitPattern;
-use log::warn;
+use bytemuck::{AnyBitPattern, NoUninit};
+use log::{info, warn};
 use serde::Serialize;
 
 pub struct PacketHeader {
@@ -86,6 +86,11 @@ pub fn read<R: Read, T: AnyBitPattern + Default>(r: &mut R) -> T {
     bytemuck::try_from_bytes(&buffer)
         .copied()
         .unwrap_or_default()
+}
+
+fn write<W: Write, T: NoUninit + Default>(w: &mut W, value: &T) {
+    let buffer = bytemuck::bytes_of(value);
+    let _ = w.write_all(buffer);
 }
 
 pub fn read_header<R: Read>(r: &mut R) -> PacketHeader {
@@ -174,8 +179,28 @@ pub fn send_status<S: Read + Write>(s: &mut S, protocol: i32) {
     s.write_all(&pong).unwrap();
 }
 
-pub fn send_login<R: Read>(_r: &mut R) {
-    todo!()
+pub fn send_login<S: Read + Write>(s: &mut S) {
+    let login_start_header = read_header(s);
+    if login_start_header.id != 0 {
+        warn!(
+            "login start packet id mismatch: 0x{:x}",
+            login_start_header.id
+        );
+        return;
+    }
+
+    let player_name = read_string(s);
+    info!("player name: {player_name}");
+    let uuid: u128 = read(s);
+    info!("player uuid: {uuid:x}");
+
+    // respond with login success
+    let mut payload = Vec::with_capacity(16);
+    write(&mut payload, &uuid);
+    write_string(&mut payload, &player_name);
+
+    write_varint(s, payload.len() as i32);
+    s.write_all(&payload).unwrap();
 }
 
 pub const fn mc_version(protocol_version: i32) -> &'static str {
