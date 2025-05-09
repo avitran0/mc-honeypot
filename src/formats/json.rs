@@ -37,4 +37,8 @@ impl EventSink for JsonEventSink {
         )
         .unwrap();
     }
+
+    fn name(&self) -> &'static str {
+        "json"
+    }
 }

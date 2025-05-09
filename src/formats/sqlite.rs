@@ -47,4 +47,8 @@ impl EventSink for SqliteEventSink {
             )
             .unwrap();
     }
+
+    fn name(&self) -> &'static str {
+        "sqlite"
+    }
 }

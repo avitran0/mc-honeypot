@@ -18,6 +18,7 @@ pub struct LoginEvent {
 
 pub trait EventSink {
     fn write(&mut self, event: &LoginEvent);
+    fn name(&self) -> &'static str;
 }
 
 pub struct MultiSink {
@@ -37,5 +38,17 @@ impl MultiSink {
         for sink in &mut self.sinks {
             sink.write(event);
         }
+    }
+
+    pub fn sink_names(&self) -> String {
+        let names = self.sinks.iter().map(|sink| sink.name());
+        let mut sink_names = String::with_capacity(names.len() * 4);
+        for (index, name) in names.enumerate() {
+            if index != 0 {
+                sink_names.push(',');
+            }
+            sink_names.push_str(name);
+        }
+        sink_names
     }
 }

@@ -7,7 +7,7 @@ use std::{
 
 use clap::Parser;
 use formats::{LoginEvent, MultiSink, json::JsonEventSink, sqlite::SqliteEventSink};
-use log::{error, info};
+use log::{error, info, warn};
 use packets::*;
 
 mod formats;
@@ -36,8 +36,12 @@ struct Args {
     online_players: i32,
 
     /// output file name
-    #[arg(short, long, default_value = "logins")]
+    #[arg(long, default_value = "logins")]
     file_name: String,
+
+    /// comma-separated list of formats (json, sqlite etc...)
+    #[arg(short, long, default_value = "json")]
+    formats: String,
 }
 
 static ARGS: LazyLock<Args> = LazyLock::new(Args::parse);
@@ -50,8 +54,18 @@ fn main() {
 
     // init all file formats
     let mut sink = MultiSink::new();
-    sink.add_sink(SqliteEventSink::new());
-    sink.add_sink(JsonEventSink::new());
+    let formats = ARGS.formats.to_lowercase();
+    for format in formats.split(',') {
+        match format {
+            "json" => sink.add_sink(JsonEventSink::new()),
+            "sqlite" => sink.add_sink(SqliteEventSink::new()),
+            _ => {
+                warn!("invalid format: {format}");
+                continue;
+            }
+        }
+    }
+    info!("chosen formats: {}", sink.sink_names());
 
     let shared_sink = Arc::new(Mutex::new(sink));
 
