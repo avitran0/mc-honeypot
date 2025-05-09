@@ -21,11 +21,11 @@ struct Args {
     message: String,
 
     /// max amount of players on the server
-    #[arg(short, long, default_value_t = 20)]
+    #[arg(long, default_value_t = 20)]
     max_players: i32,
 
     /// online player count
-    #[arg(short, long, default_value_t = 0)]
+    #[arg(long, default_value_t = 0)]
     online_players: i32,
 }
 
