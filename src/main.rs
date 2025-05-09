@@ -6,7 +6,7 @@ use std::{
 };
 
 use clap::Parser;
-use formats::{LoginEvent, MultiSink, sqlite::SqliteLoginSink};
+use formats::{LoginEvent, MultiSink, json::JsonEventSink, sqlite::SqliteEventSink};
 use log::{error, info};
 use packets::*;
 
@@ -17,7 +17,7 @@ mod util;
 
 /// a minecraft honeypot
 #[derive(Parser)]
-#[command(about, version)]
+#[command(about, version, author = "avitran0")]
 struct Args {
     /// what port the server should listen on
     #[arg(short, long, default_value_t = 25565)]
@@ -50,7 +50,8 @@ fn main() {
 
     // init all file formats
     let mut sink = MultiSink::new();
-    sink.add_sink(SqliteLoginSink::new());
+    sink.add_sink(SqliteEventSink::new());
+    sink.add_sink(JsonEventSink::new());
 
     let shared_sink = Arc::new(Mutex::new(sink));
 

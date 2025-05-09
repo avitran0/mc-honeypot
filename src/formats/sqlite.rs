@@ -2,15 +2,15 @@ use rusqlite::Connection;
 
 use crate::ARGS;
 
-use super::LoginSink;
+use super::EventSink;
 
-pub struct SqliteLoginSink {
+pub struct SqliteEventSink {
     connection: Connection,
 }
 
-impl SqliteLoginSink {
+impl SqliteEventSink {
     pub fn new() -> Self {
-        let connection = Connection::open(format!("{}.db", &ARGS.file_name)).unwrap();
+        let connection = Connection::open(format!("{}.sqlite", &ARGS.file_name)).unwrap();
         connection
             .execute(
                 "CREATE TABLE IF NOT EXISTS login_events (
@@ -29,7 +29,7 @@ impl SqliteLoginSink {
     }
 }
 
-impl LoginSink for SqliteLoginSink {
+impl EventSink for SqliteEventSink {
     fn write(&mut self, event: &super::LoginEvent) {
         self.connection
             .execute(

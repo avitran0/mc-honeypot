@@ -1,9 +1,12 @@
 use std::net::SocketAddr;
 
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod json;
 pub mod sqlite;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoginEvent {
     pub ip: SocketAddr,
     pub version: i32,
@@ -13,12 +16,12 @@ pub struct LoginEvent {
     pub player_uuid: Uuid,
 }
 
-pub trait LoginSink {
+pub trait EventSink {
     fn write(&mut self, event: &LoginEvent);
 }
 
 pub struct MultiSink {
-    sinks: Vec<Box<dyn LoginSink + Send>>,
+    sinks: Vec<Box<dyn EventSink + Send>>,
 }
 
 impl MultiSink {
@@ -26,7 +29,7 @@ impl MultiSink {
         Self { sinks: Vec::new() }
     }
 
-    pub fn add_sink<S: LoginSink + Send + 'static>(&mut self, sink: S) {
+    pub fn add_sink<S: EventSink + Send + 'static>(&mut self, sink: S) {
         self.sinks.push(Box::new(sink));
     }
 
