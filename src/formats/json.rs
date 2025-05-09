@@ -19,7 +19,7 @@ impl JsonEventSink {
             .write(true)
             .create(true)
             .truncate(false)
-            .open(format!("{}.json", &ARGS.file_name))
+            .open(format!("out/{}.json", &ARGS.file_name))
             .unwrap();
         let entries = serde_json::from_str(&read_to_string(&file).unwrap()).unwrap_or(Vec::new());
         Self { file, entries }

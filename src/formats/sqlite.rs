@@ -10,7 +10,7 @@ pub struct SqliteEventSink {
 
 impl SqliteEventSink {
     pub fn new() -> Self {
-        let connection = Connection::open(format!("{}.sqlite", &ARGS.file_name)).unwrap();
+        let connection = Connection::open(format!("out/{}.sqlite", &ARGS.file_name)).unwrap();
         connection
             .execute(
                 "CREATE TABLE IF NOT EXISTS login_events (

@@ -20,9 +20,18 @@ cd mc-honeypot
 cargo run
 ```
 
+## Usage
+
+- `--formats`: selects the output formats as a comma-separated list (json, csv, sqlite)
+- `--file-name`: sets the output file name, without extension, because that is format-dependent
+- `--port`: selects port the server listens on
+- `--message`: sets the "message of the day" (has to be in quotes)
+- `--max-players`: sets the maximum amount of players on the server
+- `--online-players`: sets the amount of online players on the server
+
 ## Todo
 
-- [ ] file output (csv, json)
+- [x] file output (csv, json)
 - [ ] database output (sqlite, others)
 - [ ] customizable server icon
 - [x] configurable server appearance (motd, player count)

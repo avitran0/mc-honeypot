@@ -13,7 +13,7 @@ pub struct CsvEventSink {
 
 impl CsvEventSink {
     pub fn new() -> Self {
-        let file_name = format!("{}.csv", &ARGS.file_name);
+        let file_name = format!("out/{}.csv", &ARGS.file_name);
         let file = OpenOptions::new()
             .append(true)
             .create(true)

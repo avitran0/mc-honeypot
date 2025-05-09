@@ -1,4 +1,5 @@
 /target
+/out
 *.json
 *.csv
 *.sqlite

@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::Path};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -29,6 +29,10 @@ pub struct MultiSink {
 
 impl MultiSink {
     pub fn new() -> Self {
+        let out = Path::new("out");
+        if !out.exists() {
+            std::fs::create_dir(out).unwrap();
+        }
         Self { sinks: Vec::new() }
     }
 
