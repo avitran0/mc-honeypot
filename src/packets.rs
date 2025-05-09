@@ -4,6 +4,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
+    ARGS,
     protocol::{PacketHeader, mc_version, mc_version_legacy, read_header},
     util::{read, read_legacy_string, read_string, read_varint, write_string, write_varint},
 };
@@ -54,7 +55,7 @@ pub struct StatusResponse;
 impl StatusResponse {
     pub fn send<W: Write>(w: &mut W, version: i32) {
         let protocol = if version < 0 { 770 } else { version };
-        let server_description = Status::new(protocol, "A Minecraft Server".to_string());
+        let server_description = Status::new(protocol);
         let mut payload = Vec::new();
 
         write_string(
@@ -174,21 +175,26 @@ struct Status {
 }
 
 impl Status {
-    pub fn new(protocol: i32, description: String) -> Self {
+    pub fn new(protocol: i32) -> Self {
         Self {
             version: StatusVersion {
-                name: mc_version(protocol).to_string(),
+                name: mc_version(protocol),
                 protocol,
             },
-            players: StatusPlayers { max: 20, online: 0 },
-            description: StatusDescription { text: description },
+            players: StatusPlayers {
+                max: ARGS.max_players,
+                online: ARGS.online_players,
+            },
+            description: StatusDescription {
+                text: &ARGS.message,
+            },
         }
     }
 }
 
 #[derive(Serialize)]
 struct StatusVersion {
-    pub name: String,
+    pub name: &'static str,
     pub protocol: i32,
 }
 
@@ -200,5 +206,5 @@ struct StatusPlayers {
 
 #[derive(Serialize)]
 struct StatusDescription {
-    pub text: String,
+    pub text: &'static str,
 }

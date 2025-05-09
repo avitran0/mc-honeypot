@@ -24,5 +24,6 @@ cargo run
 
 - [ ] file output (csv, json)
 - [ ] database output (sqlite, others)
-- [ ] configurable server appearance (motd, player count)
-- [ ] configurable port
+- [ ] customizable server icon
+- [x] configurable server appearance (motd, player count)
+- [x] configurable port

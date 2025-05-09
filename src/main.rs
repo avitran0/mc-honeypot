@@ -1,14 +1,35 @@
-use std::{io::Write, net::TcpListener, thread};
+use std::{io::Write, net::TcpListener, sync::LazyLock, thread};
 
+use clap::Parser;
 use log::{error, info};
-use packets::{
-    Handshake, LegacyPing, LegacyPingResponse, LoginStart, Ping, Pong, StatusRequest,
-    StatusResponse,
-};
+use packets::*;
 
 mod packets;
 mod protocol;
 mod util;
+
+/// a minecraft honeypot
+#[derive(Parser)]
+#[command(about, version)]
+struct Args {
+    /// what port the server should listen on
+    #[arg(short, long, default_value_t = 25565)]
+    port: u16,
+
+    /// message of the day
+    #[arg(short, long, default_value = "A Minecraft Server")]
+    message: String,
+
+    /// max amount of players on the server
+    #[arg(short, long, default_value_t = 20)]
+    max_players: i32,
+
+    /// online player count
+    #[arg(short, long, default_value_t = 0)]
+    online_players: i32,
+}
+
+static ARGS: LazyLock<Args> = LazyLock::new(Args::parse);
 
 fn main() {
     env_logger::builder()
@@ -16,9 +37,20 @@ fn main() {
         .filter_level(log::LevelFilter::Info)
         .init();
 
-    const PORT: u16 = 25565;
-    let listener = TcpListener::bind(("0.0.0.0", PORT)).expect("port 25565 is already in use");
-    info!("listening on port {PORT}");
+    let listener = match TcpListener::bind(("0.0.0.0", ARGS.port)) {
+        Ok(listener) => listener,
+        Err(error) => {
+            match error.kind() {
+                std::io::ErrorKind::AddrInUse => error!("port {} is already in use", ARGS.port),
+                std::io::ErrorKind::PermissionDenied => {
+                    error!("missing permissions to bind port {}", ARGS.port)
+                }
+                _ => {}
+            };
+            return;
+        }
+    };
+    info!("listening on port {}", ARGS.port);
 
     for stream in listener.incoming() {
         let mut stream = match stream {
