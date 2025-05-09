@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod csv;
 pub mod json;
 pub mod sqlite;
 

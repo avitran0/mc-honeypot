@@ -6,7 +6,9 @@ use std::{
 };
 
 use clap::Parser;
-use formats::{LoginEvent, MultiSink, json::JsonEventSink, sqlite::SqliteEventSink};
+use formats::{
+    LoginEvent, MultiSink, csv::CsvEventSink, json::JsonEventSink, sqlite::SqliteEventSink,
+};
 use log::{error, info, warn};
 use packets::*;
 
@@ -40,7 +42,7 @@ struct Args {
     file_name: String,
 
     /// comma-separated list of formats (json, sqlite etc...)
-    #[arg(short, long, default_value = "json")]
+    #[arg(short, long, default_value = "csv")]
     formats: String,
 }
 
@@ -58,6 +60,7 @@ fn main() {
     for format in formats.split(',') {
         match format {
             "json" => sink.add_sink(JsonEventSink::new()),
+            "csv" => sink.add_sink(CsvEventSink::new()),
             "sqlite" => sink.add_sink(SqliteEventSink::new()),
             _ => {
                 warn!("invalid format: {format}");
