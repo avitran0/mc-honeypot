@@ -20,7 +20,7 @@ impl SqliteEventSink {
                 hostname TEXT,
                 player_name TEXT,
                 player_uuid TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                timestamp TEXT
             );",
                 (),
             )
@@ -34,15 +34,16 @@ impl EventSink for SqliteEventSink {
         self.connection
             .execute(
                 "INSERT INTO login_events
-            (ip, version, mc_version, hostname, player_name, player_uuid)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
+            (ip, version, mc_version, hostname, player_name, player_uuid, timestamp)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);",
                 rusqlite::params![
                     event.ip.to_string(),
                     event.version,
                     event.mc_version,
                     event.hostname,
                     event.player_name,
-                    event.player_uuid.to_string()
+                    event.player_uuid.to_string(),
+                    event.timestamp.to_string()
                 ],
             )
             .unwrap();

@@ -153,6 +153,7 @@ fn main() {
                 hostname: handshake.hostname,
                 player_name: login.player_name,
                 player_uuid: login.uuid,
+                timestamp: chrono::Local::now(),
             });
         });
     }

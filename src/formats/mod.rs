@@ -15,6 +15,7 @@ pub struct LoginEvent {
     pub hostname: String,
     pub player_name: String,
     pub player_uuid: Uuid,
+    pub timestamp: chrono::DateTime<chrono::Local>,
 }
 
 pub trait EventSink {
