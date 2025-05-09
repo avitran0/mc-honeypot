@@ -22,6 +22,10 @@ cargo run
 
 ## Usage
 
+`cargo run` to use with defaults (json format only, default minecraft server settings)
+
+`cargo run -- --flags` to use with additional flags
+
 - `--formats`: selects the output formats as a comma-separated list (json, csv, sqlite)
 - `--file-name`: sets the output file name, without extension, because that is format-dependent
 - `--port`: selects port the server listens on
