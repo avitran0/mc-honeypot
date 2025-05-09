@@ -1,9 +1,16 @@
-use std::{io::Write, net::TcpListener, sync::LazyLock, thread};
+use std::{
+    io::Write,
+    net::TcpListener,
+    sync::{Arc, LazyLock, Mutex},
+    thread,
+};
 
 use clap::Parser;
+use formats::{LoginEvent, MultiSink, sqlite::SqliteLoginSink};
 use log::{error, info};
 use packets::*;
 
+mod formats;
 mod packets;
 mod protocol;
 mod util;
@@ -27,6 +34,10 @@ struct Args {
     /// online player count
     #[arg(long, default_value_t = 0)]
     online_players: i32,
+
+    /// output file name
+    #[arg(short, long, default_value = "logins")]
+    file_name: String,
 }
 
 static ARGS: LazyLock<Args> = LazyLock::new(Args::parse);
@@ -36,6 +47,12 @@ fn main() {
         .format(|buf, record| writeln!(buf, "[{}] {}", record.level(), record.args()))
         .filter_level(log::LevelFilter::Info)
         .init();
+
+    // init all file formats
+    let mut sink = MultiSink::new();
+    sink.add_sink(SqliteLoginSink::new());
+
+    let shared_sink = Arc::new(Mutex::new(sink));
 
     let listener = match TcpListener::bind(("0.0.0.0", ARGS.port)) {
         Ok(listener) => listener,
@@ -64,6 +81,8 @@ fn main() {
             Ok(ip) => ip,
             Err(_) => continue,
         };
+
+        let thread_sink = shared_sink.clone();
 
         thread::spawn(move || {
             println!();
@@ -108,6 +127,15 @@ fn main() {
             let login = LoginStart::new(&mut stream);
             info!("player name: {}", &login.player_name);
             info!("player uuid: {}", login.uuid);
+
+            thread_sink.lock().unwrap().write(&LoginEvent {
+                ip,
+                version: handshake.version,
+                mc_version: handshake.mc_version,
+                hostname: handshake.hostname,
+                player_name: login.player_name,
+                player_uuid: login.uuid,
+            });
         });
     }
 }
