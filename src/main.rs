@@ -42,7 +42,7 @@ struct Args {
     file_name: String,
 
     /// comma-separated list of formats (json, sqlite etc...)
-    #[arg(short, long, default_value = "csv")]
+    #[arg(short, long, default_value = "json")]
     formats: String,
 }
 
