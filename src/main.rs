@@ -49,6 +49,8 @@ struct Args {
 static ARGS: LazyLock<Args> = LazyLock::new(Args::parse);
 
 fn main() {
+    println!("{}", ARGS.message);
+
     env_logger::builder()
         .format(|buf, record| writeln!(buf, "[{}] {}", record.level(), record.args()))
         .filter_level(log::LevelFilter::Info)
